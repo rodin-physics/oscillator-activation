@@ -11,7 +11,7 @@ nTrials = 1000  # Number of runs at each pamaters combination
 δτ = 1e-3 / 2
 
 σ = -20
-impact_parameters = [0, 1, 2, 4]
+impact_parameters = [0, 2]
 μs = [1 / 5, 1, 5]
 params = [(s, μ) for s in impact_parameters, μ in μs] |> vec
 
@@ -111,7 +111,7 @@ for p in params
                 ϕ = 2 * π * rand()
 
                 ρ0 = ζ * sin(ϕ)
-                dρ0 = 2 * π * cos(ϕ)
+                dρ0 = 2 * π * ζ * cos(ϕ)
 
                 curr_state = (ρ0, dρ0, σ, init_speed)
                 res = passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
@@ -153,7 +153,7 @@ for p in params
                 ϕ = 2 * π * rand()
 
                 ρ0 = ζ * sin(ϕ)
-                dρ0 = 2 * π * cos(ϕ)
+                dρ0 = 2 * π * ζ * cos(ϕ)
                 curr_state = (ρ0, dρ0, σ, init_speed)
                 res = passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
                 passes[run] = res

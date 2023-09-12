@@ -6,19 +6,24 @@ seed_number = 150
 δτ = 1e-3 / 2
 
 σ = -20
-impact_parameters = [0, 1, 2, 4]
-μs = [1 / 5, 1, 5]
+impact_parameters = [0, 2]
+# impact_parameters = [0, 1, 2, 4]
+μs = [1]
 # impact_parameters = [0]
 # μs = [1]
 params = [(s, μ) for s in impact_parameters, μ in μs] |> vec
 
-nPts = 100
-en_min = 1
-en_max = 12
-ens_particle = range(en_min, en_max, length = nPts)
-ens_osc = range(en_min, en_max, length = nPts)
-ϕs = range(0, 2 * π, length = nPts)
+nPts = 200
+en_min_particle = 1 / 10
+en_max_particle = 12
 
+en_min_osc = 0 / 10
+en_max_osc = 20
+
+ens_particle = range(en_min_particle, en_max_particle, length = nPts)
+ens_osc = range(en_min_osc, en_max_osc, length = nPts)
+# ϕs = range(0, 2 * π, length = nPts)
+ϕs = (0:8) .* π / 4
 
 # Interaction function
 Φ0 = 10
@@ -28,7 +33,11 @@ ens_osc = range(en_min, en_max, length = nPts)
     return res
 end
 
-idx = [(ii, jj, kk) for ii = 1:nPts, jj = 1:nPts, kk = 1:nPts] |> vec
+idx =
+    [
+        (ii, jj, kk) for ii in eachindex(ens_particle), jj in eachindex(ens_osc),
+        kk in eachindex(ϕs)
+    ] |> vec
 
 for p in params
     s = p[1]
@@ -36,7 +45,7 @@ for p in params
     Random.seed!(seed_number)
     if !isfile("Data/Phase/Phase_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2")
 
-        transmission = zeros(Int, (nPts, nPts, nPts))
+        transmission = zeros(Int, (length(ens_particle), length(ens_osc), length(ϕs)))
 
         prog = Progress(length(idx))
 
@@ -67,9 +76,3 @@ for p in params
         )
     end
 end
-
-
-# tt = load_object("Data/Phase/Phase_s0_Φ10_λ2_μ1.jld2")
-# r = tt[end-2]
-# heatmap(r[:,:,90])
-# [:,:,50]

@@ -1,5 +1,6 @@
 using ForwardDiff
 using NLsolve
+using ColorSchemes
 include("plotting_settings.jl")
 
 set_theme!(publication_theme)
@@ -515,32 +516,85 @@ save("Moving_Oscillator.pdf", fig)
 ## PHASE SPACE
 
 ## LOAD THE DATA
-phase = readdir("Data/Phase/"; join = true)
-phase = load_object.(phase)
 
-impact_parameters = unique([x[end-1] for x in phase])
-masses = unique([x[end] for x in phase])
+s0Phase = load_object("Data/Phase/Phase_s0_Φ10_λ2_μ1.jld2")
+s2Phase = load_object("Data/Phase/Phase_s2_Φ10_λ2_μ1.jld2")
+my_cmap = ColorScheme(range(my_sky, my_blue, length = 2))
 
-s0Phase = filter(x -> x[end-1] == 0, phase)
-s2Phase = filter(x -> x[end-1] == 2, phase)
-# using GLMakie
-# GLMakie.activate!()
+fig = Figure(resolution = (2400, 600))
 
-# d = s0Phase[1]
-# cmap = :Hiroshige
-# volume(
-#     d[1],
-#     d[2],
-#     d[3],
-#     d[4],
-#     algorithm = :iso,
-#     isorange = 0.05,
-#     isovalue = 0,
-#     colormap = cmap,
-#     alpha = 0.8
-# )
-# # volume()
+ϕs_lab = [
+    L"\phi = 0",
+    L"\pi / 4",
+    L" \pi / 2",
+    L"3\pi / 4",
+    L"\pi",
+    L"5 \pi / 4",
+    L"3\pi / 2",
+    L"7 \pi / 4",
+]
 
-# r = LinRange(-1, 1, 100)
-# cube = [(x .^ 2 + y .^ 2 + z .^ 2) for x in r, y in r, z in r]
-# contour(cube, alpha = 0.5)
+main_grid = fig[1, 1] = GridLayout()
+
+gs0 = main_grid[1, 1] = GridLayout()
+gs2 = main_grid[2, 1] = GridLayout()
+
+axtop = [Axis(gs0[1, ii], xaxisposition = :top) for ii in eachindex(ϕs_lab)]
+axbottom = [Axis(gs2[1, ii]) for ii in eachindex(ϕs_lab)]
+
+lab_top = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)", "(h)"]
+lab_bottom = ["(i)", "(j)", "(k)", "(l)", "(m)", "(n)", "(o)", "(p)"]
+
+for ii in eachindex(ϕs_lab)
+    heatmap!(axtop[ii], s0Phase[1], s0Phase[2], s0Phase[4][:, :, ii], colormap = my_cmap)
+    heatmap!(axbottom[ii], s2Phase[1], s2Phase[2], s2Phase[4][:, :, ii], colormap = my_cmap)
+
+    axtop[ii].xticks = [0, 5, 10]
+    axbottom[ii].xlabel = ϕs_lab[ii]
+
+    hidexdecorations!(axbottom[ii], label = false)
+
+    text!(
+        axtop[ii],
+        0.75,
+        0.95,
+        text = lab_top[ii],
+        align = (:left, :top),
+        space = :relative,
+        fontsize = 36,
+        font = :latex,
+        color = :white,
+    )
+
+    text!(
+        axbottom[ii],
+        0.75,
+        0.95,
+        text = lab_bottom[ii],
+        align = (:left, :top),
+        space = :relative,
+        fontsize = 36,
+        font = :latex,
+        color = :white,
+    )
+end
+
+for ii in eachindex(ϕs_lab)[1:end-1]
+    hideydecorations!(axtop[ii], label = false)
+    hideydecorations!(axbottom[ii], label = false)
+end
+axtop[1].ylabel = "Head-on"
+axbottom[1].ylabel = "Offset"
+
+axtop[1].xlabel = L"\mathcal{E}_\mathrm{particle}"
+axtop[end].ylabel = L"\mathcal{E}\mathrm{osc}"
+axbottom[end].ylabel = ""
+
+axtop[end].yaxisposition = :right
+axbottom[end].yaxisposition = :right
+
+axtop[end].yticks = [0, 10, 20]
+axbottom[end].yticks = [0, 10, 20]
+
+fig
+save("Phase_Space.pdf", fig)
