@@ -2,12 +2,25 @@ include("main.jl")
 
 # Simulation parameters
 seed_number = 150
-ωT_min = 1
-ωT_max = 150
-nPts = 100
-ωTs = range(ωT_min, ωT_max, length = nPts)
 
-nTrials = 1000  # Number of runs at each pamaters combination
+# High temperature
+ωT_min = 4
+ωT_max = 150
+nPts = 200
+
+ωTs_high = range(ωT_min, ωT_max, length = nPts)
+
+# Low temperature
+ωT_min = 1
+ωT_max = 4
+nPts = 50
+
+ωTs_low = range(ωT_min, ωT_max, length = nPts)
+
+ωTs = vcat(ωTs_low, ωTs_high)
+nPts = length(ωTs)
+
+nTrials = 10000  # Number of runs at each pamaters combination
 δτ = 1e-3 / 2
 
 σ = -20
