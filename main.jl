@@ -13,14 +13,14 @@ dirs = ["Data", "Data/Frozen", "Data/Deflected", "Data/Thermal", "Data/Joint", "
 [isdir(d) ? nothing : mkdir(d) for d in dirs]
 
 @inline function derivatives(Φ, s, μ, ρ, dρ, σ, dσ; frozen = false)
-    dist = √((ρ - s)^2 + σ^2)
-    dΦ = ForwardDiff.derivative(r -> Φ(r), dist)
+    dist = sqrt.((ρ .- s) .^ 2 + σ .^ 2)
+    dΦ = [ForwardDiff.derivative(r -> Φ(r), d) for d in dist]
 
-    ddσ = -(4 * π^2 / μ) * (dΦ * σ / dist)
-    ddρ = -(4 * π^2) * (ρ + dΦ * (ρ - s) / dist)
+    ddσ = -(4 * π^2 / μ) .* (dΦ .* σ ./ dist)
+    ddρ = -(4 * π^2) .* (ρ + dΦ .* (ρ .- s) ./ dist)
 
     if frozen
-        return (0, 0, dσ, ddσ)
+        return (0 .* dρ, 0 .* ddρ, dσ, ddσ)
     else
         (dρ, ddρ, dσ, ddσ)
     end
@@ -71,14 +71,44 @@ function solverRK(Φ, s, μ, τmax, δτ, curr_state; show_prog = true, frozen =
     return res
 end
 
+# function passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
+#     σ = curr_state[3]
+#     dσ = curr_state[4]
+
+#     while (dσ > 0) & (σ < 0)
+#         curr_state = RKstep(Φ, s, μ, curr_state, δτ; frozen = frozen)
+#         σ = curr_state[3]
+#         dσ = curr_state[4]
+#     end
+#     return (σ > 0)
+# end
+
+
 function passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
     σ = curr_state[3]
     dσ = curr_state[4]
 
-    while (dσ > 0) & (σ < 0)
+    passed = 0
+
+    while length(σ) > 0
+
         curr_state = RKstep(Φ, s, μ, curr_state, δτ; frozen = frozen)
+        ρ = curr_state[1]
+        dρ = curr_state[2]
         σ = curr_state[3]
         dσ = curr_state[4]
+
+        # Find how many particles have passed the oscillator
+        passed = passed + sum(σ .> 0)
+
+        # Keep only the particles that have not bounced back or passed
+        idx = findall(x -> x < 0, σ .* dσ)
+
+        σ = σ[idx]
+        dσ = dσ[idx]
+        ρ = ρ[idx]
+        dρ = dρ[idx]
+        curr_state = (ρ, dρ, σ, dσ)
     end
-    return (σ > 0)
+    return (passed)
 end

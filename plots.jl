@@ -1,6 +1,7 @@
-using ForwardDiff
-using NLsolve
 using ColorSchemes
+using ForwardDiff
+using JLD2
+using NLsolve
 include("plotting_settings.jl")
 
 set_theme!(publication_theme)
@@ -62,29 +63,31 @@ group_activation =
     [LineElement(color = :black, linewidth = 4, linestyle = s) for s in [nothing, :dash]]
 
 # STATIONARY OSCILLATOR
-fig = Figure(resolution = (1200, 1800))
+fig = Figure(size = (1200, 1800))
 gdata = fig[1, 1] = GridLayout()
 glegend = fig[2, 1] = GridLayout()
 
 axtop = Axis(
     gdata[1, 1],
     ylabel = "Transmission probability",
-    xlabel = L"\omega_T",
+    xlabel = L"1/\omega_T",
     title = "Frozen oscillator",
     titlefont = :boldlatex,
+    yscale = log10,
 )
 
 axbottom = Axis(
     gdata[2, 1],
     ylabel = "Transmission probability",
-    xlabel = L"\omega_T",
+    xlabel = L"1/\omega_T",
     title = "Deflected oscillator",
     titlefont = :boldlatex,
+    yscale = log10,
 )
 
 text!(
     axtop,
-    0.05,
+    0.85,
     0.95,
     text = L"(\mathrm{a})",
     align = (:left, :top),
@@ -93,7 +96,7 @@ text!(
 )
 text!(
     axbottom,
-    0.05,
+    0.85,
     0.95,
     text = L"(\mathrm{b})",
     align = (:left, :top),
@@ -103,16 +106,18 @@ text!(
 
 rowsize!(fig.layout, 2, Auto(1 / 8))
 
-insettop =
-    Axis(fig, bbox = BBox(650, 1130, 1210, 1570), xlabel = L"1/\omega_T", yscale = log10)
-insetbottom =
-    Axis(fig, bbox = BBox(650, 1130, 410, 770), xlabel = L"1/\omega_T", yscale = log10)
+insettop = Axis(
+    fig,
+    bbox = BBox(150, 510, 1110, 1380),
+    xlabel = L"\omega_T",
+    xaxisposition = :top,
+    yaxisposition = :right,
+)
 
-ylims!(axtop, (-0.05, 1.05))
-ylims!(axbottom, (-0.05, 1.05))
+ylims!(insettop, (-0.05, 1.05))
 
-ylims!(insettop, (1e-3, 2))
-ylims!(insetbottom, (1e-3, 2))
+ylims!(axtop, (1e-4, 2))
+ylims!(axbottom, (1e-4, 2))
 
 Legend(
     glegend[1, 1],
@@ -132,16 +137,16 @@ Legend(
 for ii in eachindex(s0Frozen)
     d = s0Frozen[ii]
     scatter!(
-        axtop,
+        insettop,
         d[1],
         d[2],
         color = colors[1],
         marker = symbols[ii],
-        markersize = sizes[ii],
+        markersize = sizes[ii] / 2,
     )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insettop,
+        axtop,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[1],
@@ -154,16 +159,16 @@ end
 for ii in eachindex(s2Frozen)
     d = s2Frozen[ii]
     scatter!(
-        axtop,
+        insettop,
         d[1],
         d[2],
         color = colors[2],
         marker = symbols[ii],
-        markersize = sizes[ii],
+        markersize = sizes[ii] / 2,
     )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insettop,
+        axtop,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[2],
@@ -175,17 +180,9 @@ end
 
 for ii in eachindex(s0Deflected)
     d = s0Deflected[ii]
-    scatter!(
-        axbottom,
-        d[1],
-        d[2],
-        color = colors[1],
-        marker = symbols[ii],
-        markersize = sizes[ii],
-    )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insetbottom,
+        axbottom,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[1],
@@ -197,17 +194,9 @@ end
 
 for ii in eachindex(s2Deflected)
     d = s2Deflected[ii]
-    scatter!(
-        axbottom,
-        d[1],
-        d[2],
-        color = colors[2],
-        marker = symbols[ii],
-        markersize = sizes[ii],
-    )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insetbottom,
+        axbottom,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[2],
@@ -217,11 +206,11 @@ for ii in eachindex(s2Deflected)
 
 end
 
-lines!(axtop, ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(axtop, ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
+lines!(insettop, ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
+lines!(insettop, ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
 
-lines!(insettop, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(insettop, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
+lines!(axtop, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
+lines!(axtop, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
 
 
 function fn(ρ)
@@ -232,21 +221,10 @@ end
 sol = (nlsolve(fn, [0.0]).zero)[1]
 activation = Φ(sol - 2) + 1 * sol^2 / 2
 
-lines!(axbottom, ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(axbottom, ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
+lines!(axbottom, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
+lines!(axbottom, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
 lines!(
     axbottom,
-    ωTs,
-    exp.(-activation ./ ωTs),
-    color = colors[2],
-    linewidth = 4,
-    linestyle = :dash,
-)
-
-lines!(insetbottom, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(insetbottom, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
-lines!(
-    insetbottom,
     1 ./ ωTs,
     exp.(-activation ./ ωTs),
     color = colors[2],
@@ -259,29 +237,31 @@ fig
 save("Stationary_Oscillator.pdf", fig)
 
 # MOVING OSCILLATOR
-fig = Figure(resolution = (1200, 1800))
+fig = Figure(size = (1200, 1800))
 gdata = fig[1, 1] = GridLayout()
 glegend = fig[2, 1] = GridLayout()
 
 axtop = Axis(
     gdata[1, 1],
     ylabel = "Transmission probability",
-    xlabel = L"\omega_T",
+    xlabel = L"1/\omega_T",
     title = "Separate distributions",
     titlefont = :boldlatex,
+    yscale = log10,
 )
 
 axbottom = Axis(
     gdata[2, 1],
     ylabel = "Transmission probability",
-    xlabel = L"\omega_T",
+    xlabel = L"1/\omega_T",
     title = "Joint distributions",
     titlefont = :boldlatex,
+    yscale = log10,
 )
 
 text!(
     axtop,
-    0.05,
+    0.85,
     0.95,
     text = L"(\mathrm{a})",
     align = (:left, :top),
@@ -290,7 +270,7 @@ text!(
 )
 text!(
     axbottom,
-    0.05,
+    0.85,
     0.95,
     text = L"(\mathrm{b})",
     align = (:left, :top),
@@ -299,17 +279,6 @@ text!(
 )
 
 rowsize!(fig.layout, 2, Auto(1 / 8))
-
-insettop =
-    Axis(fig, bbox = BBox(650, 1130, 1210, 1570), xlabel = L"1/\omega_T", yscale = log10)
-insetbottom =
-    Axis(fig, bbox = BBox(650, 1130, 410, 770), xlabel = L"1/\omega_T", yscale = log10)
-
-ylims!(axtop, (-0.05, 1.05))
-ylims!(axbottom, (-0.05, 1.05))
-
-ylims!(insettop, (1e-3, 2))
-ylims!(insetbottom, (1e-3, 2))
 
 Legend(
     glegend[1, 1],
@@ -328,17 +297,9 @@ Legend(
 
 for ii in eachindex(s0Thermal)
     d = s0Thermal[ii]
-    scatter!(
-        axtop,
-        d[1],
-        d[2],
-        color = colors[1],
-        marker = symbols[ii],
-        markersize = sizes[ii],
-    )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insettop,
+        axtop,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[1],
@@ -350,17 +311,9 @@ end
 
 for ii in eachindex(s2Thermal)
     d = s2Thermal[ii]
-    scatter!(
-        axtop,
-        d[1],
-        d[2],
-        color = colors[2],
-        marker = symbols[ii],
-        markersize = sizes[ii],
-    )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insettop,
+        axtop,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[2],
@@ -372,17 +325,9 @@ end
 
 for ii in eachindex(s0Joint)
     d = s0Joint[ii]
-    scatter!(
-        axbottom,
-        d[1],
-        d[2],
-        color = colors[1],
-        marker = symbols[ii],
-        markersize = sizes[ii],
-    )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insetbottom,
+        axbottom,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[1],
@@ -394,17 +339,9 @@ end
 
 for ii in eachindex(s2Joint)
     d = s2Joint[ii]
-    scatter!(
-        axbottom,
-        d[1],
-        d[2],
-        color = colors[2],
-        marker = symbols[ii],
-        markersize = sizes[ii],
-    )
     idx = findall(x -> x > 0, d[2])
     scatter!(
-        insetbottom,
+        axbottom,
         1 ./ d[1][idx],
         d[2][idx],
         color = colors[2],
@@ -432,7 +369,7 @@ activationHeadOn = Φ(sol) + 1 * sol^2 / 2
 
 lines!(
     axtop,
-    ωTs,
+    1 ./ ωTs,
     exp.(-activationHeadOn ./ ωTs),
     color = colors[1],
     linewidth = 4,
@@ -440,25 +377,6 @@ lines!(
 )
 lines!(
     axtop,
-    ωTs,
-    exp.(-activationOffset ./ ωTs),
-    color = colors[2],
-    linewidth = 4,
-    linestyle = :dash,
-)
-lines!(axtop, ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(axtop, ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
-
-lines!(
-    insettop,
-    1 ./ ωTs,
-    exp.(-activationHeadOn ./ ωTs),
-    color = colors[1],
-    linewidth = 4,
-    linestyle = :dash,
-)
-lines!(
-    insettop,
     1 ./ ωTs,
     exp.(-activationOffset ./ ωTs),
     color = colors[2],
@@ -466,12 +384,12 @@ lines!(
     linestyle = :dash,
 )
 
-lines!(insettop, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(insettop, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
+lines!(axtop, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
+lines!(axtop, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
 
 lines!(
     axbottom,
-    ωTs,
+    1 ./ ωTs,
     exp.(-activationHeadOn ./ ωTs),
     color = colors[1],
     linewidth = 4,
@@ -479,27 +397,6 @@ lines!(
 )
 lines!(
     axbottom,
-    ωTs,
-    exp.(-activationOffset ./ ωTs),
-    color = colors[2],
-    linewidth = 4,
-    linestyle = :dash,
-)
-
-lines!(axbottom, ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(axbottom, ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
-
-
-lines!(
-    insetbottom,
-    1 ./ ωTs,
-    exp.(-activationHeadOn ./ ωTs),
-    color = colors[1],
-    linewidth = 4,
-    linestyle = :dash,
-)
-lines!(
-    insetbottom,
     1 ./ ωTs,
     exp.(-activationOffset ./ ωTs),
     color = colors[2],
@@ -507,8 +404,8 @@ lines!(
     linestyle = :dash,
 )
 
-lines!(insetbottom, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
-lines!(insetbottom, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
+lines!(axbottom, 1 ./ ωTs, exp.(-Φ(0) ./ ωTs), color = colors[1], linewidth = 4)
+lines!(axbottom, 1 ./ ωTs, exp.(-Φ(2) ./ ωTs), color = colors[2], linewidth = 4)
 fig
 
 save("Moving_Oscillator.pdf", fig)
@@ -519,9 +416,9 @@ save("Moving_Oscillator.pdf", fig)
 
 s0Phase = load_object("Data/Phase/Phase_s0_Φ10_λ2_μ1.jld2")
 s2Phase = load_object("Data/Phase/Phase_s2_Φ10_λ2_μ1.jld2")
-my_cmap = ColorScheme(range(my_sky, my_blue, length = 2))
+my_cmap = ColorScheme(range(my_vermillion, my_blue, length = 2))
 
-fig = Figure(resolution = (2400, 600))
+fig = Figure(size = (2400, 600))
 
 ϕs_lab = [
     L"\phi = 0",
@@ -546,8 +443,14 @@ lab_top = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)", "(h)"]
 lab_bottom = ["(i)", "(j)", "(k)", "(l)", "(m)", "(n)", "(o)", "(p)"]
 
 for ii in eachindex(ϕs_lab)
-    heatmap!(axtop[ii], s0Phase[1], s0Phase[2], s0Phase[4][:, :, ii], colormap = my_cmap)
-    heatmap!(axbottom[ii], s2Phase[1], s2Phase[2], s2Phase[4][:, :, ii], colormap = my_cmap)
+    contourf!(axtop[ii], s0Phase[1], s0Phase[2], s0Phase[4][:, :, ii], colormap = my_cmap)
+    contourf!(
+        axbottom[ii],
+        s2Phase[1],
+        s2Phase[2],
+        s2Phase[4][:, :, ii],
+        colormap = my_cmap,
+    )
 
     axtop[ii].xticks = [0, 5, 10]
     axbottom[ii].xlabel = ϕs_lab[ii]
@@ -563,7 +466,7 @@ for ii in eachindex(ϕs_lab)
         space = :relative,
         fontsize = 36,
         font = :latex,
-        color = :white,
+        color = :black,
     )
 
     text!(
@@ -575,7 +478,7 @@ for ii in eachindex(ϕs_lab)
         space = :relative,
         fontsize = 36,
         font = :latex,
-        color = :white,
+        color = :black,
     )
 end
 

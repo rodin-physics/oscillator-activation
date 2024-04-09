@@ -45,21 +45,16 @@ for p in params
     Random.seed!(seed_number)
     if !isfile("Data/Frozen/Frozen_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2")
         transmission = zeros(nPts)
-        for ii in eachindex(ωTs)
+        prog = Progress(nPts)
+        Threads.@threads for ii in eachindex(ωTs)
             ωT = ωTs[ii]
-            passes = zeros(Int, nTrials)
-            prog = Progress(nTrials)
-            Threads.@threads for run = 1:nTrials
+            rand_energy = -ωT * log.(1 .- rand(Float64, nTrials))
+            init_speed = sqrt.(rand_energy * 8 * π^2 / μ)
+            curr_state = (zeros(nTrials), zeros(nTrials), σ .* ones(nTrials), init_speed)
+            transmission[ii] = passCheck(Φ, s, μ, δτ, curr_state; frozen = true) / nTrials
 
-                rand_energy = -ωT * log(1 - rand())
-                init_speed = √(rand_energy * 8 * π^2 / μ)
-                curr_state = (0, 0, σ, init_speed)
-                res = passCheck(Φ, s, μ, δτ, curr_state; frozen = true)
-                passes[run] = res
-                next!(prog)
-                GC.safepoint()
-            end
-            transmission[ii] = sum(passes) ./ nTrials
+            next!(prog)
+            GC.safepoint()
         end
         save_object(
             "Data/Frozen/Frozen_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2",
@@ -77,21 +72,16 @@ for p in params
     Random.seed!(seed_number)
     if !isfile("Data/Deflected/Deflected_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2")
         transmission = zeros(nPts)
-        for ii in eachindex(ωTs)
+        prog = Progress(nPts)
+        Threads.@threads for ii in eachindex(ωTs)
             ωT = ωTs[ii]
-            passes = zeros(Int, nTrials)
-            prog = Progress(nTrials)
-            Threads.@threads for run = 1:nTrials
+            rand_energy = -ωT * log.(1 .- rand(Float64, nTrials))
+            init_speed = sqrt.(rand_energy * 8 * π^2 / μ)
+            curr_state = (zeros(nTrials), zeros(nTrials), σ .* ones(nTrials), init_speed)
+            transmission[ii] = passCheck(Φ, s, μ, δτ, curr_state; frozen = false) / nTrials
 
-                rand_energy = -ωT * log(1 - rand())
-                init_speed = √(rand_energy * 8 * π^2 / μ)
-                curr_state = (0, 0, σ, init_speed)
-                res = passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
-                passes[run] = res
-                next!(prog)
-                GC.safepoint()
-            end
-            transmission[ii] = sum(passes) ./ nTrials
+            next!(prog)
+            GC.safepoint()
         end
         save_object(
             "Data/Deflected/Deflected_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2",
@@ -99,7 +89,6 @@ for p in params
         )
     end
 end
-
 
 # THERMAL MASS
 println("Thermal mass")
@@ -110,29 +99,26 @@ for p in params
     Random.seed!(seed_number)
     if !isfile("Data/Thermal/Thermal_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2")
         transmission = zeros(nPts)
-        for ii in eachindex(ωTs)
+        prog = Progress(nPts)
+        Threads.@threads for ii in eachindex(ωTs)
             ωT = ωTs[ii]
-            passes = zeros(Int, nTrials)
-            prog = Progress(nTrials)
-            Threads.@threads for run = 1:nTrials
-                rand_energy = -ωT * log(1 - rand())
-                init_speed = √(rand_energy * 8 * π^2 / μ)
+            rand_energy = -ωT * log.(1 .- rand(Float64, nTrials))
+            init_speed = sqrt.(rand_energy * 8 * π^2 / μ)
 
-                η = 1e-12
-                n = rand(Geometric(1 - exp(-1 / ωT) - η))
-                ζ = √(n + 1 / 2) * √(2)
-                ϕ = 2 * π * rand()
+            η = 1e-12
+            n = rand(Geometric(1 - exp(-1 / ωT) - η), nTrials)
+            ζ = sqrt.(n .+ 1 / 2) .* √(2)
+            ϕ = 2 * π * rand(Float64, nTrials)
 
-                ρ0 = ζ * sin(ϕ)
-                dρ0 = 2 * π * ζ * cos(ϕ)
+            ρ0 = ζ .* sin.(ϕ)
+            dρ0 = 2 * π * ζ .* cos.(ϕ)
 
-                curr_state = (ρ0, dρ0, σ, init_speed)
-                res = passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
-                passes[run] = res
-                next!(prog)
-                GC.safepoint()
-            end
-            transmission[ii] = sum(passes) ./ nTrials
+            curr_state = (ρ0, dρ0, σ .* ones(nTrials), init_speed)
+
+            transmission[ii] = passCheck(Φ, s, μ, δτ, curr_state; frozen = false) / nTrials
+
+            next!(prog)
+            GC.safepoint()
         end
         save_object(
             "Data/Thermal/Thermal_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2",
@@ -150,30 +136,28 @@ for p in params
     Random.seed!(seed_number)
     if !isfile("Data/Joint/Joint_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2")
         transmission = zeros(nPts)
-        for ii in eachindex(ωTs)
+        prog = Progress(nPts)
+        Threads.@threads for ii in eachindex(ωTs)
             ωT = ωTs[ii]
-            passes = zeros(Int, nTrials)
-            prog = Progress(nTrials)
-            Threads.@threads for run = 1:nTrials
-                rand_energy = -ωT * log(1 - rand())
-                nMax = floor(Int, rand_energy)
-                n = rand(0:nMax)
+            rand_energy = -ωT * log.(1 .- rand(Float64, nTrials))
+            nMax = [floor(Int, r) for r in rand_energy]
+            n = [rand(0:n) for n in nMax]
 
-                particle_energy = rand_energy - n
-                init_speed = √(particle_energy * 8 * π^2 / μ)
+            particle_energy = rand_energy .- n
+            init_speed = sqrt.(particle_energy * 8 * π^2 / μ)
 
-                ζ = √(n + 1 / 2) * √(2)
-                ϕ = 2 * π * rand()
+            ζ = sqrt.(n .+ 1 / 2) .* √(2)
+            ϕ = 2 * π * rand(Float64, nTrials)
 
-                ρ0 = ζ * sin(ϕ)
-                dρ0 = 2 * π * ζ * cos(ϕ)
-                curr_state = (ρ0, dρ0, σ, init_speed)
-                res = passCheck(Φ, s, μ, δτ, curr_state; frozen = false)
-                passes[run] = res
-                next!(prog)
-                GC.safepoint()
-            end
-            transmission[ii] = sum(passes) ./ nTrials
+            ρ0 = ζ .* sin.(ϕ)
+            dρ0 = 2 * π * ζ .* cos.(ϕ)
+
+            curr_state = (ρ0, dρ0, σ .* ones(nTrials), init_speed)
+
+            transmission[ii] = passCheck(Φ, s, μ, δτ, curr_state; frozen = false) / nTrials
+
+            next!(prog)
+            GC.safepoint()
         end
         save_object(
             "Data/Joint/Joint_s$(s)_Φ$(Φ0)_λ$(λ)_μ$(μ).jld2",

@@ -7,10 +7,7 @@ seed_number = 150
 
 σ = -20
 impact_parameters = [0, 2]
-# impact_parameters = [0, 1, 2, 4]
 μs = [1]
-# impact_parameters = [0]
-# μs = [1]
 params = [(s, μ) for s in impact_parameters, μ in μs] |> vec
 
 nPts = 200
